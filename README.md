@@ -51,3 +51,22 @@ PawPal+ includes several algorithmic features that make daily pet care planning 
 - **Filter by pet or status** — `Scheduler.filter_tasks()` accepts optional `pet_name` and `completed` parameters to narrow down the task list.
 - **Recurring task automation** — When a daily or weekly task is marked complete via `Scheduler.mark_task_complete()`, a new task instance is automatically created for the next occurrence (using `timedelta` for date math), so the owner never has to re-enter routine tasks.
 - **Conflict detection** — `Scheduler.detect_conflicts()` scans all scheduled tasks and returns warning messages for any tasks that share the exact same time slot, without crashing the program.
+
+## Testing PawPal+
+
+Run the test suite with:
+
+```bash
+python -m pytest
+```
+
+The test suite (18 tests) covers:
+
+- **Task completion** — Verifies `mark_complete()` toggles status correctly and returns `None` when already done.
+- **Task & pet management** — Confirms adding tasks increases count and pets register under an owner.
+- **Sorting correctness** — Tasks are returned in chronological order by `sort_by_time()`, and `sort_by_priority_then_time()` groups by priority first.
+- **Recurrence logic** — Completing a daily task creates a new task for the next day; weekly tasks recur 7 days later; one-time tasks do not recur.
+- **Conflict detection** — Detects single and multiple time-slot conflicts, and reports no conflicts when times differ.
+- **Edge cases** — A pet with no tasks doesn't break sorting/filtering; filtering by pet name or completion status returns correct subsets; completing a nonexistent task returns `None`.
+
+**Confidence Level:** ⭐⭐⭐⭐⭐ (5/5) — All 18 tests pass and cover happy paths, recurrence, conflicts, and edge cases.
