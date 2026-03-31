@@ -41,13 +41,15 @@ After simplifying from the initial five-class design to four classes, the follow
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+- I used VS Code Copilot throughout every phase of this project — from UML design brainstorming to implementing scheduling logic, writing tests, and polishing the Streamlit UI.
+- **Copilot Chat** was the most effective feature for building the scheduler. I could describe a method's purpose in natural language (e.g., "detect scheduling conflicts by comparing time slots") and get a working implementation to evaluate. Inline completions also accelerated routine code like dataclass fields and test boilerplate.
+- The most helpful prompts were specific, constrained requests: "Given my current `Task` dataclass, write a method that marks it complete and returns `None` if already done" worked much better than vague prompts like "make the scheduler smarter."
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+- One AI suggestion I rejected: Copilot initially suggested a `ScheduledTask` wrapper class to pair each task with its pet name. I rejected this because simple `(pet_name, Task)` tuples served the same purpose without adding a fifth class. Keeping the design at four classes reduced complexity and made the codebase easier to test and maintain.
+- I verified AI suggestions by running `pytest` after every change to confirm existing tests still passed, and by manually tracing the logic for edge cases (e.g., what happens when a pet has zero tasks, or when a non-existent task is marked complete).
+- Using separate chat sessions for different phases (design, implementation, testing, UI) helped keep the context focused. Each session could reference the specific files being worked on without carrying irrelevant history from earlier phases.
 
 ---
 
@@ -55,13 +57,13 @@ After simplifying from the initial five-class design to four classes, the follow
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+- The test suite (18 tests) covers the core behaviors of every class: task completion toggling, pet/task management, chronological sorting, priority-based sorting, daily and weekly recurrence, one-time task handling, single and multiple conflict detection, filtering by pet name and completion status, and edge cases like empty pet task lists and nonexistent tasks.
+- These tests are important because the scheduler is the "brain" of the app — if sorting is wrong, the owner sees a confusing schedule; if recurrence breaks, routine tasks silently stop appearing; if conflict detection fails, overlapping tasks go unnoticed. Each test targets a specific behavior that a real user would depend on.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+- Confidence: ⭐⭐⭐⭐⭐ (5/5). All 18 tests pass, covering happy paths, recurrence logic, conflict detection, and edge cases.
+- If I had more time, I would test: tasks with identical descriptions on different pets, JSON round-trip (save then load and verify equality), time-boundary edge cases (e.g., tasks at "00:00" and "23:59"), and the `find_next_available_slot` method with a fully packed schedule.
 
 ---
 
@@ -69,12 +71,12 @@ After simplifying from the initial five-class design to four classes, the follow
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+- I'm most satisfied with how the four-class architecture stayed clean from UML through final implementation. The `Scheduler` class cleanly separates orchestration logic (sorting, filtering, conflicts, recurrence) from data ownership (`Owner`/`Pet`/`Task`), making each piece independently testable. The 18-test suite gave me confidence to refactor freely without fear of breaking things.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+- I would add task duration so conflict detection could catch overlapping time ranges, not just exact matches. I'd also add a data persistence layer to the Streamlit app (using `save_to_json`/`load_from_json`) so tasks survive between sessions, and build a "weekly overview" view that shows recurring tasks across multiple days.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+- The most important lesson was that when collaborating with AI, I need to be the architect who makes design decisions — not just accept whatever code is generated. AI is excellent at producing working code fast, but the human engineer must decide *what* to build, evaluate tradeoffs (like dropping the `ScheduledTask` class for simplicity), and verify correctness through tests. The AI amplifies my productivity, but the design judgment is mine.

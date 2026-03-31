@@ -80,43 +80,72 @@ else:
 st.divider()
 
 # ── Daily Schedule ────────────────────────────────────────────
-st.subheader("Today's Schedule")
+st.subheader("📅 Today's Schedule")
 
 scheduler = Scheduler(owner)
 
-if st.button("Generate schedule"):
-    schedule = scheduler.get_today_schedule()
-    if schedule:
-        rows = []
-        for pet_name_s, task in schedule:
-            rows.append(
-                {
-                    "Time": task.time,
-                    "Task": task.description,
-                    "Pet": pet_name_s,
-                    "Priority": task.priority,
-                    "Done": "✓" if task.completed else "○",
-                }
-            )
-        st.table(rows)
+# Conflict warnings at the top so they're immediately visible
+conflicts = scheduler.detect_conflicts()
+if conflicts:
+    for c in conflicts:
+        st.warning(f"⚠️ {c}")
 
-        conflicts = scheduler.detect_conflicts()
-        if conflicts:
-            st.warning("⚠ Scheduling Conflicts")
-            for c in conflicts:
-                st.write(f"• {c}")
-    else:
-        st.info("No tasks scheduled for today. Add some tasks above!")
+# Sorting & filtering controls
+col_sort, col_filter = st.columns(2)
+with col_sort:
+    sort_mode = st.radio("Sort by", ["Time", "Priority → Time"], horizontal=True)
+with col_filter:
+    filter_pet = st.selectbox(
+        "Filter by pet", ["All pets"] + [p.name for p in owner.get_pets()]
+    )
+
+# Apply sorting
+if sort_mode == "Priority → Time":
+    schedule = scheduler.sort_by_priority_then_time()
+else:
+    schedule = scheduler.sort_by_time()
+
+# Apply pet filter
+if filter_pet != "All pets":
+    schedule = [(pn, t) for pn, t in schedule if pn == filter_pet]
+
+# Display schedule
+if schedule:
+    rows = []
+    for pet_name_s, task in schedule:
+        priority_badge = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(
+            task.priority, ""
+        )
+        rows.append(
+            {
+                "Time": task.time or "—",
+                "Task": task.description,
+                "Pet": pet_name_s,
+                "Priority": f"{priority_badge} {task.priority}",
+                "Freq": task.frequency,
+                "Status": "✅" if task.completed else "⬜",
+            }
+        )
+    st.table(rows)
+else:
+    st.info("No tasks yet. Add a pet and some tasks above!")
+
+st.divider()
 
 # ── Mark Complete ─────────────────────────────────────────────
-all_tasks = scheduler.filter_tasks(completed=False)
-if all_tasks:
-    st.subheader("Mark a Task Complete")
-    task_options = [f"{pn}: {t.description} ({t.time})" for pn, t in all_tasks]
+incomplete_tasks = scheduler.filter_tasks(completed=False)
+if incomplete_tasks:
+    st.subheader("✔️ Mark a Task Complete")
+    task_options = [f"{pn}: {t.description} ({t.time})" for pn, t in incomplete_tasks]
     chosen = st.selectbox("Select task to complete", task_options)
     if st.button("Mark complete"):
         idx = task_options.index(chosen)
-        pn, t = all_tasks[idx]
-        scheduler.mark_task_complete(pn, t.description)
+        pn, t = incomplete_tasks[idx]
+        new_task = scheduler.mark_task_complete(pn, t.description)
         st.success(f"Completed '{t.description}' for {pn}!")
+        if new_task:
+            st.info(
+                f"🔁 Recurring task auto-scheduled: '{new_task.description}' "
+                f"on {new_task.due_date.strftime('%b %d, %Y')}"
+            )
         st.rerun()
