@@ -27,13 +27,13 @@ After simplifying from the initial five-class design to four classes, the follow
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+- The scheduler considers **time** (tasks have an `HH:MM` slot), **priority** (high/medium/low), **due date** (tasks are scoped to a specific day), and **frequency** (daily, weekly, or one-time) as its core constraints.
+- Time and priority were treated as the most important constraints because a pet owner's day revolves around "what needs to happen and when." Priority breaks ties when multiple tasks compete for attention — high-priority tasks like feeding and medication come before lower-priority grooming. Frequency was added next because routine pet care is inherently recurring, so automating the next occurrence saves the most manual effort.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+- The conflict detection algorithm only checks for **exact time matches** — two tasks at "07:00" trigger a warning, but overlapping durations (e.g., a 60-minute walk at 07:00 and a feeding at 07:30) do not. This keeps the algorithm simple (O(n log n) sort + single pass) and avoids requiring a "duration" field on every task. For a pet owner's daily schedule with short, well-separated tasks, exact-match detection catches the most common conflicts without adding complexity.
+- Recurring task generation creates only the **next single occurrence** when a task is completed, rather than pre-generating all future instances. This keeps the task list small and avoids stale future tasks if the owner changes their routine.
 
 ---
 

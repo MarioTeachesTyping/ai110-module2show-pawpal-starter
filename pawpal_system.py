@@ -120,13 +120,25 @@ class Scheduler:
         ]
 
     def sort_by_time(self) -> list[tuple[str, Task]]:
-        """Return all tasks sorted by their scheduled time."""
+        """Return all tasks sorted by their scheduled time.
+
+        Uses a lambda key to compare time strings in "HH:MM" format.
+        Tasks without a time are sorted to the beginning.
+        """
         return sorted(self.get_all_tasks(), key=lambda t: t[1].time)
 
     def filter_tasks(
         self, pet_name: str | None = None, completed: bool | None = None
     ) -> list[tuple[str, Task]]:
-        """Filter tasks by pet name and/or completion status."""
+        """Filter tasks by pet name and/or completion status.
+
+        Args:
+            pet_name: If provided, only return tasks for this pet.
+            completed: If provided, only return tasks matching this completion state.
+
+        Returns:
+            A filtered list of (pet_name, Task) tuples.
+        """
         results = self.get_all_tasks()
         if pet_name is not None:
             results = [(pn, t) for pn, t in results if pn == pet_name]
@@ -135,7 +147,15 @@ class Scheduler:
         return results
 
     def detect_conflicts(self) -> list[str]:
-        """Return descriptions of any scheduling conflicts (overlapping times)."""
+        """Detect scheduling conflicts where two tasks share the exact same time.
+
+        Uses a lightweight approach: sorts all timed tasks and checks adjacent
+        pairs for matching times. Returns warning messages rather than raising
+        exceptions, so the program continues running.
+
+        Returns:
+            A list of human-readable conflict warning strings.
+        """
         timed = [(pn, t) for pn, t in self.get_all_tasks() if t.time]
         timed.sort(key=lambda x: x[1].time)
         conflicts: list[str] = []
@@ -148,14 +168,48 @@ class Scheduler:
                 )
         return conflicts
 
-    def mark_task_complete(self, pet_name: str, description: str) -> None:
-        """Mark a specific task as complete by pet name and task description."""
+    def mark_task_complete(self, pet_name: str, description: str) -> Task | None:
+        """Mark a task as complete and auto-schedule recurring tasks.
+
+        When a task with frequency "daily" or "weekly" is completed, a new
+        Task instance is automatically created for the next occurrence using
+        Python's timedelta (1 day for daily, 7 days for weekly).
+
+        Args:
+            pet_name: Name of the pet that owns the task.
+            description: Description string of the task to complete.
+
+        Returns:
+            The newly created recurring Task if one was generated, or None.
+        """
         for pet in self.owner.get_pets():
             if pet.name == pet_name:
                 for task in pet.tasks:
-                    if task.description == description:
+                    if task.description == description and not task.completed:
                         task.mark_complete()
-                        return
+                        # Auto-schedule recurring tasks
+                        if task.frequency == "daily":
+                            next_task = Task(
+                                description=task.description,
+                                time=task.time,
+                                frequency=task.frequency,
+                                due_date=task.due_date + timedelta(days=1),
+                                priority=task.priority,
+                            )
+                            pet.add_task(next_task)
+                            return next_task
+                        elif task.frequency == "weekly":
+                            next_task = Task(
+                                description=task.description,
+                                time=task.time,
+                                frequency=task.frequency,
+                                due_date=task.due_date + timedelta(days=7),
+                                priority=task.priority,
+                            )
+                            pet.add_task(next_task)
+                            return next_task
+                        return None
+        return None
 
     def get_today_schedule(self) -> list[tuple[str, Task]]:
         """Return tasks due today, sorted by time."""
@@ -184,7 +238,11 @@ class Scheduler:
         return ""
 
     def sort_by_priority_then_time(self) -> list[tuple[str, Task]]:
-        """Return all tasks sorted first by priority, then by time."""
+        """Return all tasks sorted first by priority (high → low), then by time.
+
+        Uses a composite sort key: priority rank from _PRIORITY_ORDER dict,
+        then the time string for secondary ordering.
+        """
         return sorted(
             self.get_all_tasks(),
             key=lambda x: (_PRIORITY_ORDER.get(x[1].priority, 1), x[1].time),
